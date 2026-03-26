@@ -1,0 +1,60 @@
+#########################################################
+# SECURESHIELD AI - SETUP INSTRUCTIONS (VS CODE)
+#########################################################
+
+Welcome to SecureShield AI! Follow these instructions carefully on your company laptop to get the architecture running locally in VS Code.
+
+---------------------------------------------------------
+1. PREREQUISITES
+---------------------------------------------------------
+You must have the following installed on the company laptop:
+- Python (3.10 or higher recommended)
+- Node.js (which includes `npm`)
+- MongoDB (Running locally on default port 27017)
+
+---------------------------------------------------------
+2. OPENING THE PROJECT
+---------------------------------------------------------
+1. Open VS Code.
+2. Click File -> "Open Folder..." and select the `secureSheild` root folder.
+3. You will need to run TWO separate terminals in VS Code concurrently (one for Backend, one for Frontend).
+
+---------------------------------------------------------
+3. STARTING THE BACKEND (First Terminal)
+---------------------------------------------------------
+1. Open a new terminal in VS Code (Terminal -> New Terminal).
+2. Navigate into the backend directory:
+   cd backend
+3. Create a fresh virtual environment:
+   python -m venv venv
+4. Activate the virtual environment:
+   (Windows): .\venv\Scripts\activate
+   (Mac/Linux): source venv/bin/activate
+5. Install the Python dependencies from the text file:
+   pip install -r requirements.txt
+6. Set up your Database Environment securely:
+   - Make a copy of the `.env.example` file and rename it to `.env`.
+   - Ensure the MONGODB_URI and DB_NAME are correct.
+7. Start the FastAPI Server:
+   uvicorn main:app --reload
+
+>> The Backend is now active on http://localhost:8000
+
+---------------------------------------------------------
+4. STARTING THE FRONTEND (Second Terminal)
+---------------------------------------------------------
+1. Open a SECOND terminal tab in VS Code (Hit the '+' icon in the terminal panel).
+2. Navigate into the frontend directory:
+   cd frontend
+3. Install the React packages:
+   npm install
+4. Start the Vite React Server:
+   npm run dev
+
+>> The Frontend User Interface is now active on http://localhost:5173
+>> Open that link in your web browser!
+
+---------------------------------------------------------
+5. DATABASE NOTE (Week 3 Preparation)
+---------------------------------------------------------
+For the "Firewall" to correctly log blocked Prompt Injection attempts, your MongoDB instance must be running. If MongoDB is off, the backend will gracefully catch the failure and print a "[DB WARNING]" to the backend terminal, allowing you to test the Chat Interface safely without crashing! 
