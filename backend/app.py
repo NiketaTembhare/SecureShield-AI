@@ -35,6 +35,19 @@ def create_app() -> Flask:
     def health():
         return {"status": "ok"}
 
+    @app.get("/api/health/db")
+    def health_db():
+        mongo_uri = os.getenv("MONGODB_URI", "NOT_SET")
+        uri_type = "atlas" if "mongodb+srv" in mongo_uri else "local" if mongo_uri != "NOT_SET" else "NOT_SET"
+        from database.mongo import get_db_safe
+        db, err = get_db_safe()
+        return {
+            "uri_configured": mongo_uri != "NOT_SET",
+            "uri_type": uri_type,
+            "connected": db is not None,
+            "error": err
+        }
+
     return app
 
 

@@ -14,8 +14,8 @@ def get_db():
 
     mongo_uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
     db_name = os.getenv("DB_NAME", "secureshield")
-    # serverSelectionTimeoutMS=3000 → fail fast instead of hanging for 30s
-    _client = MongoClient(mongo_uri, serverSelectionTimeoutMS=3000)
+    # serverSelectionTimeoutMS=5000 → enough for Atlas cold start
+    _client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
     # Ping to verify we can actually reach the server
     _client.admin.command("ping")
     _db = _client[db_name]
@@ -27,6 +27,13 @@ def get_db_safe():
     try:
         return get_db(), None
     except ServerSelectionTimeoutError:
-        return None, "Cannot connect to MongoDB at localhost:27017. Please make sure MongoDB is running."
+        mongo_uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+        # Mask the URI for security but show enough to debug
+        if "mongodb+srv" in mongo_uri:
+            host_hint = "Atlas cluster"
+        else:
+            host_hint = mongo_uri.split("@")[-1].split("/")[0] if "@" in mongo_uri else mongo_uri
+        return None, f"Cannot connect to MongoDB at {host_hint}. Please check your MONGODB_URI."
     except Exception as e:
         return None, f"Database error: {str(e)}"
+
