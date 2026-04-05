@@ -37,7 +37,7 @@ export default function Chat() {
 
     try {
       const token = localStorage.getItem('ss_token') || '';
-      const response = await fetch('http://localhost:8000/api/chat', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:8000'}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
