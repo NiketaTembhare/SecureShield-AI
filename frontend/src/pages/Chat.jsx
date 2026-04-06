@@ -37,6 +37,31 @@ export default function Chat() {
 
     try {
       const token = localStorage.getItem('ss_token') || '';
+
+      // Wake up Render backend if it's sleeping (free tier spins down after 15min)
+      try {
+        const controller = new AbortController();
+        const wakeTimeout = setTimeout(() => controller.abort(), 5000);
+        await fetch(`${API_BASE}/api/health`, { signal: controller.signal });
+        clearTimeout(wakeTimeout);
+      } catch {
+        // Health check failed or timed out — backend is waking up
+        setMessages((prev) => [...prev, { role: 'assistant', content: '⏳ Server is waking up (free tier). This takes ~30-60 seconds on first request. Please wait...' }]);
+        // Wait for backend to fully wake up
+        for (let i = 0; i < 12; i++) {
+          await new Promise(r => setTimeout(r, 5000));
+          try {
+            const c = new AbortController();
+            const t = setTimeout(() => c.abort(), 5000);
+            const r = await fetch(`${API_BASE}/api/health`, { signal: c.signal });
+            clearTimeout(t);
+            if (r.ok) break;
+          } catch { /* still waking */ }
+        }
+        // Remove the "waking up" message
+        setMessages((prev) => prev.filter(m => !m.content.includes('Server is waking up')));
+      }
+
       const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: {
@@ -100,7 +125,7 @@ export default function Chat() {
         }
       }
     } catch (err) {
-      setMessages((prev) => [...prev, { role: 'system_alert', content: '[ERR] Connection lost. Is backend running?' }]);
+      setMessages((prev) => [...prev, { role: 'system_alert', content: '[ERR] Connection failed. The server may still be waking up. Please try again in 30 seconds.' }]);
     } finally {
       setIsLoading(false);
     }
