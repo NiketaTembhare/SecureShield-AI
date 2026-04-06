@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bot, Loader2, Menu, Send, ShieldAlert, User, ShieldCheck, Eraser, LogOut, LayoutDashboard } from 'lucide-react';
-import { api, clearToken } from '../lib/api';
+import { api, clearToken, API_BASE } from '../lib/api';
 
 export default function Chat() {
   const [messages, setMessages] = useState([
@@ -37,7 +37,7 @@ export default function Chat() {
 
     try {
       const token = localStorage.getItem('ss_token') || '';
-      const response = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:8000'}/api/chat`, {
+      const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
