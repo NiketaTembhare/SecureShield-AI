@@ -64,6 +64,7 @@ def run_audit():
             decision = compute_decision(
                 rule_score=0.0,
                 semantic_score=0.0,
+                intent_score=0.0,
                 pii_score=pii.score,
                 policy_score=0.0,
                 policy_allowed=True,

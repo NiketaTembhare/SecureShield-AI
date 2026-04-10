@@ -2,7 +2,7 @@
 
 ### Backend (Flask)
 
-- **Prereqs**: Python 3.12+, MongoDB running on `localhost:27017`
+- **Prereqs**: Python 3.10+, MongoDB running on `localhost:27017`
 - **Env**: copy `backend/.env.example` to `backend/.env` and set `JWT_SECRET` (and optionally `OPENAI_API_KEY`)
 
 Install + run:
@@ -12,15 +12,15 @@ cd backend
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
-pip install -r requirements-ml.txt
+python -m spacy download en_core_web_sm
 python app.py
 ```
 
 Backend runs on `http://localhost:8000`.
 
 Notes:
-- `requirements-ml.txt` enables **semantic detection** (SentenceTransformers) and **Presidio PII**.
-- If you skip it, the gateway still runs; semantic checks will be disabled and PII will use a small fallback detector.
+- All ML dependencies (SentenceTransformers, Presidio PII) are in `requirements.txt`.
+- If ML dependencies fail to install, the gateway still runs; semantic checks will be disabled and PII will use a small fallback detector.
 
 ### Frontend (React + Vite)
 

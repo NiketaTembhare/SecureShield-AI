@@ -7,24 +7,24 @@ from typing import Optional
 @dataclass
 class RiskDecision:
     decision: str           # BLOCK | WARN | ALLOW
-    risk_score: int         # 0–22 integer (explainable, spec-compliant)
+    risk_score: int         # 0–26 integer (explainable, spec-compliant)
     risk_pct: float         # 0.0–1.0 normalised (for frontend display / logging)
     attack_type: Optional[str]
     message: str
     contributing_factors: list[str]   # human-readable audit trail
 
 
-# ── Score weights (integer points, max sum = 22) ──────────────────────────────
+# ── Score weights (integer points, max sum = 26) ──────────────────────────────
 #
 #  Layer              Max pts   Rationale
 #  ─────────────────────────────────────────────────────────────────────────
 #  Rule engine          5       Hard-coded pattern → high precision signal
 #  Semantic similarity  4       Embedding distance → covers obfuscation
 #  LLM intent           5       Contextual reasoning → catches nuanced attacks
-#  PII detected         3       Sensitive data presence adds risk
+#  PII detected         7       Sensitive data presence → DLP hard block
 #  Policy violation     5       Access control breach → always serious
 #  ─────────────────────────────────────────────────────────────────────────
-#  TOTAL               22
+#  TOTAL               26
 #
 # Decision thresholds (per spec):
 #   score >= 7  → BLOCK
@@ -36,7 +36,7 @@ _MAX_SEMANTIC = 4
 _MAX_INTENT   = 5
 _MAX_PII      = 7
 _MAX_POLICY   = 5
-_MAX_TOTAL    = _MAX_RULE + _MAX_SEMANTIC + _MAX_INTENT + _MAX_PII + _MAX_POLICY  # 22
+_MAX_TOTAL    = _MAX_RULE + _MAX_SEMANTIC + _MAX_INTENT + _MAX_PII + _MAX_POLICY  # 26
 
 _THRESHOLD_BLOCK = 7
 _THRESHOLD_WARN  = 4
@@ -91,7 +91,7 @@ def compute_decision(
     pii_detected: bool = False,
 ) -> RiskDecision:
     """
-    Compute an integer risk score (0–22) and make a BLOCK / WARN / ALLOW decision.
+    Compute an integer risk score (0–26) and make a BLOCK / WARN / ALLOW decision.
 
     Args:
         rule_score      : Highest rule engine match score (0.0–1.0).

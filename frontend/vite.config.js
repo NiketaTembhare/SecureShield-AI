@@ -9,4 +9,3 @@ export default defineConfig({
     tailwindcss(),
   ],
 })
-// Triggering Vite restart to detect new node_modules
