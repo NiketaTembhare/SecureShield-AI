@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: secureshield-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: DB_NAME
+        value: secureshield
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_ISSUER
+        value: secureshield
+      - key: JWT_EXPIRES_MINUTES
+        value: "480"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.11"
