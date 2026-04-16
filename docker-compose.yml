@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    container_name: secureshield-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongodb_data:/data/db
+    restart: always
+
+  # Backend Security API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: secureshield-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/secureshield
+      - PORT=8000
+    depends_on:
+      - mongodb
+    volumes:
+      - ./ml_models:/app/ml_models
+    restart: always
+
+  # Frontend Dashboard
+  frontend:
+    image: node:18-slim
+    container_name: secureshield-frontend
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+    # In production, this would be an Nginx server serving the build/ dist
+    # For this project, we'll keep the dev server for interactivity
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  mongodb_data:
+  ml_models:

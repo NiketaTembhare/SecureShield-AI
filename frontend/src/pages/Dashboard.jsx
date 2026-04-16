@@ -163,28 +163,47 @@ export default function Dashboard() {
                  <DynamicRules />
               </div>
 
-              {/* Activity Feed (Bottom) */}
-              <div className="flex-1 min-h-0 flex flex-col bg-[#0a1120]/80 border border-cyan-500/30 rounded-2xl p-4 backdrop-blur-sm relative">
-                <div className="flex items-center gap-2 mb-2 shrink-0">
-                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                  <h2 className="font-bold text-xs tracking-widest text-cyan-100 uppercase">Live Activity</h2>
+              {/* Security Incident Feed */}
+              <div className="flex-1 min-h-0 flex flex-col bg-[#0a1120]/80 border border-red-500/20 rounded-2xl p-4 backdrop-blur-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-2 opacity-10">
+                   <AlertTriangle size={80} />
                 </div>
-                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-900 pr-1 space-y-2">
-                   {logs.map((log) => {
-                     const dec = log.security_assessment?.action_taken || log.decision || 'ALLOW';
+                <div className="flex items-center justify-between mb-3 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                    <h2 className="font-bold text-xs tracking-widest text-red-100 uppercase">Security Incident Feed</h2>
+                  </div>
+                  <span className="text-[8px] text-red-500/50 font-black">HIGH PRIORITY</span>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-red-900 pr-1 space-y-2">
+                   {logs.length > 0 ? logs.map((log) => {
+                     const isViolation = (log.security_assessment?.action_taken || log.decision) === 'BLOCK';
+                     const attackType = log.security_assessment?.attack_type || log.attack_type || 'SUSPICIOUS';
+                     
                      return (
-                     <div key={log._id} className="text-[10px] border-l-2 pl-3 py-1.5 bg-black/20 rounded-r border-cyan-800">
-                        <div className="flex justify-between items-center opacity-60 mb-0.5">
-                          <span className="truncate max-w-[150px] text-cyan-200">{log.user?.email || log.user_id}</span>
-                          <span className="text-[8px]">{new Date(log.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                     <div key={log._id} className={`text-[10px] border-l-2 pl-3 py-2 rounded-r transition-all ${isViolation ? 'bg-red-900/10 border-red-600 shadow-[0_0_10px_rgba(220,38,38,0.1)]' : 'bg-black/20 border-cyan-800 opacity-60'}`}>
+                        <div className="flex justify-between items-center mb-0.5">
+                          <span className={`font-bold ${isViolation ? 'text-red-400' : 'text-cyan-200'}`}>
+                             {isViolation ? `🔥 ${attackType}` : '✓ BENIGN'}
+                          </span>
+                          <span className="text-[8px] opacity-60 font-mono">
+                            {new Date(log.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                          </span>
                         </div>
-                        <div className="text-cyan-100/90 italic truncate">"{log.prompt || log.input?.prompt_preview}"</div>
-                        <div className="flex justify-between items-center mt-1 uppercase font-black tracking-tighter">
-                          <span className={`${dec === 'BLOCK' ? 'text-red-500 font-bold' : 'text-green-500'}`}>{dec}</span>
-                          <span className="opacity-40 text-[9px] font-mono">RISK: {Math.round((log.security_assessment?.severity_score ?? log.risk_score ?? 0)*100)}%</span>
+                        <div className={`italic truncate ${isViolation ? 'text-white' : 'text-cyan-100/70'}`}>
+                           "{log.prompt || log.input?.prompt_preview}"
+                        </div>
+                        <div className="flex justify-between items-center mt-1.5 font-mono text-[8px]">
+                          <span className="opacity-40">{log.user?.email || log.user_id}</span>
+                          <span className={`font-bold ${isViolation ? 'text-red-500' : 'text-cyan-500'}`}>
+                            RISK: {Math.round((log.security_assessment?.severity_score ?? log.risk_score ?? 0)*100)}%
+                          </span>
                         </div>
                      </div>
-                   )})}
+                   )}) : (
+                     <div className="h-full flex items-center justify-center text-cyan-800 text-[10px] italic">No active incidents detected.</div>
+                   )}
                 </div>
               </div>
 

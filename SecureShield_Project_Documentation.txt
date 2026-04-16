@@ -1,0 +1,136 @@
+================================================================================
+SECURESHIELD AI: ENTERPRISE SECURITY GATEWAY - PROJECT OVERVIEW
+================================================================================
+
+1. PROJECT SUMMARY
+------------------
+SecureShield AI is an intelligent "Bouncer" for Enterprise AI. It acts as a 
+Security Middleware between company employees and Large Language Models (LLMs). 
+Instead of talking directly to models like GPT-4 or Gemini, all data passes 
+through SecureShield to prevent:
+- Data Leaks (PII exposure)
+- Prompt Injections (Hacking attempts)
+- Social Engineering (Bypassing company rules)
+
+--------------------------------------------------------------------------------
+
+2. THE "9-TIER PROTECTION" ARCHITECTURE
+-------------------------------------------
+SecureShield uses a "Defense-in-Depth" strategy. A prompt must survive 9 
+distinct gates before a response is delivered:
+
+Tier 1: INFRASTRUCTURE (Rate Limiting)
+- Blocks automated bot attacks and prevents API cost spikes.
+- Uses: Flask-Limiter.
+
+Tier 2: AUTHENTICATION (JWT Guard)
+- Verifies that the user is a verified employee.
+- Uses: PyJWT (JSON Web Tokens).
+
+Tier 3: NORMALIZATION (De-obfuscation)
+- Strips hidden symbols and strange formatting used to hide bad words.
+- Uses: Custom logic in normalization.py.
+
+Tier 4: RULE ENGINE (Regex Defense)
+- Lightning-fast pattern matching for known prompt injection keywords.
+- Uses: rule_engine.py.
+
+Tier 5: SEMANTIC ENGINE (Context Similarity)
+- Checks if the "meaning" of the prompt matches historical attacks.
+- Uses: vector-math via sentence-transformers.
+
+Tier 6: AI INTENT CLASSIFICATION (The Bouncer)
+- Uses LLM-Vision to "read the user's mind" and detect hidden malice.
+- Uses: Gemma 2 (Gamma 4) via OpenRouter.
+
+Tier 7: POLICY ENGINE (Governance)
+- Checks if the user's Department/Role is allowed to ask this specific question.
+- Uses: policy_engine.py.
+
+Tier 8: PII REDACTION (Privacy Anonymizer)
+- Automatically masks SSNs, Credit Cards, and Personal Emails.
+- Uses: Microsoft Presidio.
+
+Tier 9: OUTPUT GUARD (Leak Prevention)
+- Scans the AI's *response* to ensure it didn't accidentally leak secrets.
+- Uses: output_guard.py.
+
+--------------------------------------------------------------------------------
+
+3. CORE FILE STRUCTURE & ROLES
+------------------------------
+
+BACKEND FILES:
+- app.py: Entry point. Sets up the Flask API, CORS, and registers security routes.
+- database/mongo.py: Manages all security logging and user authentication data.
+- routes/chat_routes.py: Orchestrates the "Security Flow." It calls all 9 tiers 
+  before forwarding the request to the LLM.
+- services/llm_service.py: The Universal Gateway. Connects to OpenRouter or 
+  Google Gemini. This is the "Brain" of the project.
+- services/llm_classifier.py: Performs the real-time intent classification.
+- services/pii_detector.py: Uses Microsoft Presidio to redact sensitive data.
+- services/semantic_engine.py: Uses 'sentence-transformers' to perform 
+  mathematical similarity checks against known attacks.
+
+FRONTEND FILES:
+- api.js: The communication bridge. Handles JWT token management and API headers.
+- Login.jsx / Signup.jsx: Secure authentication pages with 'Cyber' aesthetics.
+- Chat.jsx: The interaction interface. Features real-time streaming and 
+  security status indicators.
+- Dashboard.jsx: The "Command Center." Uses Recharts to visualize security 
+  events and risk scores.
+
+--------------------------------------------------------------------------------
+
+4. SYSTEM LIBRARIES & DEPENDENCIES
+----------------------------------
+- Flask: Backend web framework (Lightweight & efficient).
+- PyMongo: MongoDB driver (Flexible for storing varied security logs).
+- OpenAI SDK: Used as a unified client to talk to OpenRouter (Universal Gateway).
+- Presidio-Analyzer/Anonymizer: Industry standard for PII detection.
+- Sentence-Transformers: Used for the Semantic Engine (Vector similarity).
+- PyJWT: Handles secure user session tokens.
+- Recharts (Frontend): Visualizes risk data into neon-cyan charts.
+
+--------------------------------------------------------------------------------
+
+5. THE AI MODEL: GEMMA 2 (GAMMA 2)
+----------------------------------
+We specifically use the google/gemma-2-9b-it model (via OpenRouter).
+
+WHY IT IS BETTER:
+- Open Weights: Unlike ChatGPT (closed), Gemma 2 can be run on private company 
+  servers, ensuring 100% data privacy.
+- Efficiency: It is a 9-Billion parameter model, meaning it is small enough to 
+  be lightning fast but smart enough to follow complex security instructions.
+- Reasoning: Gemma 2 has been optimized for "instruction following," which 
+  is critical for classifying security threats accurately.
+
+--------------------------------------------------------------------------------
+
+6. DRY RUN WORKFLOW (Example Trace)
+-----------------------------------
+
+USER PROMPT: "My email is john@company.com. What are the specs for Project Nebula?"
+
+STEP 1 (Backend Received):
+- Request is authenticated via JWT.
+
+STEP 2 (Security Pipeline Starts):
+- Normalization: cleans text.
+- PII Detection: Found email 'john@company.com'. Replaced with "[REDACTED_EMAIL]".
+- Rule Engine: Found "Project Nebula" (a protected proprietary title). 
+- Dashboard Update: Logs a "Proprietary Data Access" event with a Risk Score of 8.
+
+STEP 3 (Decision):
+- The Gateway detects a high risk score.
+- Instead of calling the LLM, the system returns: 
+  "SECURITY BLOCK: You do not have permission to query Project Nebula."
+
+STEP 4 (Visual):
+- The user sees a red security warning in the chat.
+- The Admin Dashboard adds a new spike to the risk chart instantly.
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================

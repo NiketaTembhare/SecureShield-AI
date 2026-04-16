@@ -24,6 +24,8 @@ def _get_engines():
         from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern
         from presidio_analyzer.nlp_engine import NlpEngineProvider
         from presidio_anonymizer import AnonymizerEngine
+        import json
+        import os
 
         # Configure Presidio to use the small model we already downloaded
         configuration = {
@@ -33,6 +35,8 @@ def _get_engines():
         provider = NlpEngineProvider(nlp_configuration=configuration)
         nlp_engine = provider.create_engine()
 
+        _ANALYZER = AnalyzerEngine(nlp_engine=nlp_engine)
+
         # --- Custom Recognizers for India-specific PII ---
         aadhaar_pattern = Pattern(name="aadhaar_pattern", regex=r"\b[2-9][0-9]{3}\s?[0-9]{4}\s?[0-9]{4}\b", score=0.85)
         aadhaar_recognizer = PatternRecognizer(supported_entity="AADHAAR_NUMBER", patterns=[aadhaar_pattern])
@@ -40,9 +44,28 @@ def _get_engines():
         pan_pattern = Pattern(name="pan_pattern", regex=r"\b[A-Z]{5}[0-9]{4}[A-Z]{1}\b", score=0.85)
         pan_recognizer = PatternRecognizer(supported_entity="PAN_ID", patterns=[pan_pattern])
 
-        _ANALYZER = AnalyzerEngine(nlp_engine=nlp_engine)
         _ANALYZER.registry.add_recognizer(aadhaar_recognizer)
         _ANALYZER.registry.add_recognizer(pan_recognizer)
+
+        # --- Load Contextual forbidden terms & regex from config ---
+        config_path = os.path.join(os.path.dirname(__file__), "..", "config", "forbidden_terms.json")
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                config = json.load(f)
+                
+                # Add Keyword Recognizers
+                for entry in config.get("forbidden_terms", []):
+                    rec = PatternRecognizer(
+                        supported_entity=entry["name"],
+                        deny_list=entry["terms"]
+                    )
+                    _ANALYZER.registry.add_recognizer(rec)
+                
+                # Add Regex Recognizers
+                for entry in config.get("regex_patterns", []):
+                    pat = Pattern(name=entry["name"].lower(), regex=entry["pattern"], score=entry["score"])
+                    rec = PatternRecognizer(supported_entity=entry["name"], patterns=[pat])
+                    _ANALYZER.registry.add_recognizer(rec)
 
         _ANONYMIZER = AnonymizerEngine()
         return _ANALYZER, _ANONYMIZER

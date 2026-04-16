@@ -42,6 +42,13 @@ def _logs_col():
     return get_db()["security_logs"]
 
 
+from services.orchestrator import create_default_orchestrator
+from services.logger import security_logger, logger
+from services.risk_engine import compute_decision
+from database.mongo import get_recent_history
+
+orchestrator = create_default_orchestrator()
+
 def _run_pipeline(
     prompt: str,
     user_id: str,
@@ -49,105 +56,71 @@ def _run_pipeline(
     role: str,
 ) -> Dict[str, Any]:
     """
-    Full security pipeline. Returns a flat dict consumed by both /chat and /prompt.
-
-    Flow:
-      Normalize → Rules → Semantic → (LLM Classifier if suspicious) →
-      Policy → PII → Risk → Decision
+    Refactored Security Pipeline using the Orchestrator Pattern.
     """
+    # 1. Get conversation history for multi-turn context
+    history = get_recent_history(user_id, limit=5)
+    
+    context = {
+        "user_id": user_id,
+        "department": department,
+        "role": role,
+        "history": history
+    }
 
-    # ── 1. Normalize ──────────────────────────────────────────────────────────
-    normalized = normalize_text(prompt)
-
-    # ── Fast-Path for simple greetings (Latency optimization) ─────────────────
-    # Skip heavy ML scans for short, benign greetings to give instant response
-    greetings = {"hi", "hii", "hello", "hey", "hola", "namaste", "testing", "test"}
-    if len(normalized) < 10 and normalized in greetings:
-        # Consistent return structure that matches the full-scan below
-        return {
-            "normalized": normalized,
-            "rule_score": 0.0,
-            "attack_type": None,
-            "sem_score": 0.0,
-            "sem_matched": None,
-            "clf_intent": "SAFE",
-            "clf_confidence": 1.0,
-            "clf_rationale": "Fast-path greeting",
-            "clf_used_llm": False,
-            "policy_allowed": True,
-            "policy_reason": "Greeting fast-path",
-            "pii_detected": False,
-            "pii_entities": [],
-            "pii_redacted": prompt,
-            "decision": compute_decision(
-                rule_score=0.0,
-                semantic_score=0.0,
-                intent_score=0.0,
-                pii_score=0.0,
-                policy_score=0.0,
-                policy_allowed=True,
-                attack_type=None,
-                intent="SAFE",
-                pii_detected=False
-            ),
-        }
-
-    # ── 2. Rule engine ────────────────────────────────────────────────────────
-    rule_hits  = run_rules(normalized)
-    rule_score = max_rule_score(rule_hits)
-    attack_type = primary_attack_type(rule_hits)
-
-    # ── 3. Semantic engine ────────────────────────────────────────────────────
-    sem = semantic_scan(normalized)
-
-    # ── 4. LLM intent classifier (only when suspicious — saves API calls) ─────
-    suspicious = (rule_score >= 0.50) or sem.is_suspicious
-    if suspicious:
-        clf = classify_intent(
-            normalized,
-            rule_attack_type=attack_type,
-            semantic_score=sem.score,
-        )
-    else:
-        clf = classify_intent("", rule_attack_type=None, semantic_score=0.0)
-
-    # Use the rule engine attack type if classifier returned SAFE but rules fired
-    resolved_attack = clf.intent if clf.intent != "SAFE" else (attack_type or None)
-
-    # ── 5. Policy engine ──────────────────────────────────────────────────────
-    policy = evaluate_policy(department=department, role=role, prompt=normalized)
-
-    # ── 6. PII detection + redact (before LLM call) ───────────────────────────
-    pii = detect_and_redact(prompt)
-
-    # ── 7. Risk scoring + decision ────────────────────────────────────────────
+    # 2. Run the pipeline
+    result = orchestrator.run(prompt, context)
+    
+    # 3. Map orchestrator result to a Risk Decision (Tier 9)
+    # This keeps the internal logic logic compatible with existing code
+    tier_details = result["tier_details"]
+    
+    # Extract scores for compute_decision
+    rule_score = tier_details.get("RuleEngine", {}).get("score", 0.0)
+    sem_score = tier_details.get("SemanticEngine", {}).get("score", 0.0)
+    clf_data = tier_details.get("IntentClassifier", {})
+    pii_data = tier_details.get("PIIDetector", {})
+    policy_data = tier_details.get("PolicyEngine", {})
+    
     decision = compute_decision(
         rule_score=rule_score,
-        semantic_score=min(1.0, sem.score),
-        intent_score=0.0,               # legacy field; kept for compat
-        pii_score=pii.score,
-        policy_score=policy.score,
-        policy_allowed=policy.allowed,
-        attack_type=resolved_attack,
-        intent=clf.intent,              # new: string label for precise scoring
-        pii_detected=pii.detected,
+        semantic_score=sem_score,
+        intent_score=0.0,
+        pii_score=0.4 if pii_data.get("detected") else 0.0,
+        policy_score=0.8 if not policy_data.get("allowed") else 0.0,
+        policy_allowed=policy_data.get("allowed", True),
+        attack_type=clf_data.get("intent"),
+        intent=clf_data.get("intent", "SAFE"),
+        pii_detected=pii_data.get("detected", False)
+    )
+
+    # Log structured security event
+    security_logger.log_event(
+        event_type="pipeline_execution",
+        status="blocked" if result["is_blocked"] else "passed",
+        user_id=user_id,
+        details={
+            "risk_score": decision.risk_score,
+            "attack_type": decision.attack_type,
+            "tiers": result["pipeline_summary"]
+        }
     )
 
     return {
-        "normalized": normalized,
+        "normalized": tier_details.get("Normalization", {}).get("normalized_text", prompt),
         "rule_score": rule_score,
-        "attack_type": resolved_attack,
-        "sem_score": sem.score,
-        "sem_matched": sem.matched_example,
-        "clf_intent": clf.intent,
-        "clf_confidence": clf.confidence,
-        "clf_rationale": clf.rationale,
-        "clf_used_llm": getattr(clf, "used_llm", False),
-        "policy_allowed": policy.allowed,
-        "policy_reason": policy.reason,
-        "pii_detected": pii.detected,
-        "pii_entities": pii.entities,
-        "pii_redacted": pii.redacted_text,
+        "attack_type": decision.attack_type,
+        "sem_score": sem_score,
+        "sem_matched": tier_details.get("SemanticEngine", {}).get("matched"),
+        "clf_intent": clf_data.get("intent", "SAFE"),
+        "clf_confidence": clf_data.get("confidence", 1.0),
+        "clf_rationale": clf_data.get("rationale", "N/A"),
+        "clf_used_llm": True, # Orchestrator uses LLM by default
+        "policy_allowed": policy_data.get("allowed", True),
+        "policy_reason": policy_data.get("reason", "N/A"),
+        "pii_detected": pii_data.get("detected", False),
+        "pii_entities": pii_data.get("entities", []),
+        "pii_redacted": result["final_prompt"],
         "decision": decision,
     }
 

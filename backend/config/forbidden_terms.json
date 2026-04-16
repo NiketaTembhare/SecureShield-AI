@@ -1,0 +1,21 @@
+{
+  "forbidden_terms": [
+    {
+      "name": "PROJECT_CODENAME",
+      "terms": ["Nebula", "Project-X", "SecureShield-Pro", "Stargate"],
+      "score": 0.95
+    },
+    {
+      "name": "INTERNAL_SYSTEM",
+      "terms": ["Mainframe-9", "Auth-V3-Legacy", "Vault-Primary"],
+      "score": 0.90
+    }
+  ],
+  "regex_patterns": [
+    {
+      "name": "INTERNAL_ID",
+      "pattern": "SS-[0-9]{5}-[A-Z]{2}",
+      "score": 0.85
+    }
+  ]
+}
