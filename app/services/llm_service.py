@@ -1,5 +1,5 @@
 import instructor
-from openai import OpenAI
+from openai import AsyncOpenAI
 from pydantic import BaseModel
 from app.config import settings
 
@@ -7,18 +7,20 @@ class LLMResponse(BaseModel):
     answer: str
     is_safe: bool = True
 
-# Change mode to JSON
+# Initialize Async client with a timeout
 client = instructor.from_openai(
-    OpenAI(
+    AsyncOpenAI(
         base_url="https://openrouter.ai/api/v1", 
-        api_key=settings.OPENROUTER_API_KEY
+        api_key=settings.OPENROUTER_API_KEY,
+        timeout=60.0 # Prevent indefinite hangs
     ),
     mode=instructor.Mode.JSON, 
 )
 
-def generate_response(prompt: str) -> LLMResponse:
-    return client.chat.completions.create(
-        model="meta-llama/llama-3.1-8b-instruct",
+async def generate_response(prompt: str) -> LLMResponse:
+    """Generates a structured response from the LLM asynchronously."""
+    return await client.chat.completions.create(
+        model=settings.MAIN_MODEL,
         response_model=LLMResponse,
         messages=[
             {

@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, module="instructor.providers.gemini")
+
 from fastapi import FastAPI, Query, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -24,10 +27,29 @@ chat_db = client["SSA_Security"]["chats"]
 # 2. Add CORS Middleware (Crucial for Frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=settings.CORS_ORIGINS_LIST, 
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def setup_data_retention():
+    """Sets up MongoDB TTL indexes for automatic data cleanup."""
+    retention_seconds = settings.RETENTION_DAYS * 24 * 60 * 60
+    
+    # # TTL Index for Audit Logs
+    # await client["SSA_Security"]["logs"].create_index(
+    #     "timestamp", 
+    #     expireAfterSeconds=retention_seconds
+    # )
+    
+    # # TTL Index for Chat History
+    # await client["SSA_Security"]["chats"].create_index(
+    #     "timestamp", 
+    #     expireAfterSeconds=retention_seconds
+    # )
+    
+    print(f"Data retention policy active: {settings.RETENTION_DAYS} days")
 
 # Auth Models
 class RegisterModel(BaseModel):
@@ -117,21 +139,34 @@ async def chat_endpoint(data: ChatMessageModel, current_user: dict = Depends(get
         return {"status": "BLOCKED", "reason": reason}
 
     # Pipeline Checks
-    if not check_input(normalized_message): 
-        return await block_and_return("Forbidden pattern", "INPUT_GUARD")
+    import asyncio
+    
+    if not await check_input(normalized_message): 
+        return await block_and_return("Forbidden pattern detected (Static Input Guard)", "INPUT_GUARD")
     await log_pipeline_event(request_id, "INPUT_GUARD", "PASSED")
     
-    if not check_policy(normalized_message, role): 
-        return await block_and_return("Policy violation", "POLICY_ENGINE")
+    if not await check_policy(normalized_message, role): 
+        return await block_and_return("Role-based policy violation (Policy Engine)", "POLICY_ENGINE")
     await log_pipeline_event(request_id, "POLICY_ENGINE", "PASSED")
     
-    if not await check_toxicity(normalized_message): 
-        return await block_and_return("Toxic content detected", "TOXICITY_GUARD")
-    await log_pipeline_event(request_id, "TOXICITY_GUARD", "PASSED")
-    
-    if not await check_semantic_intent(normalized_message): 
-        return await block_and_return("Malicious intent detected", "SEMANTIC_GUARD")
-    await log_pipeline_event(request_id, "SEMANTIC_GUARD", "PASSED")
+    # Run heavy LLM-based guards in PARALLEL to reduce latency
+    try:
+        toxicity_task = check_toxicity(normalized_message)
+        semantic_task = check_semantic_intent(normalized_message)
+        
+        # Gather results concurrently
+        toxicity_passed, semantic_passed = await asyncio.gather(toxicity_task, semantic_task)
+        
+        if not toxicity_passed:
+            return await block_and_return("Toxic content detected", "TOXICITY_GUARD")
+        await log_pipeline_event(request_id, "TOXICITY_GUARD", "PASSED")
+        
+        if not semantic_passed:
+            return await block_and_return("Malicious intent detected", "SEMANTIC_GUARD")
+        await log_pipeline_event(request_id, "SEMANTIC_GUARD", "PASSED")
+    except Exception as e:
+        print(f"PIPELINE CRITICAL ERROR: {str(e)}")
+        return await block_and_return(f"Internal security check failed: {str(e)}", "SYSTEM")
     
     # PII Redaction
     safe_message = scrub_pii(normalized_message)
@@ -140,25 +175,29 @@ async def chat_endpoint(data: ChatMessageModel, current_user: dict = Depends(get
     else:
         await log_pipeline_event(request_id, "PII_GUARD", "PASSED")
     
-    # LLM Generation
-    llm_output = generate_response(safe_message)
-    final_response = scrub_pii(llm_output.answer) 
-    
-    await log_pipeline_event(request_id, "LLM_RESPONSE", "SUCCESS")
+    # LLM Generation (Now async)
+    try:
+        llm_output = await generate_response(safe_message)
+        final_response = scrub_pii(llm_output.answer) 
+        
+        await log_pipeline_event(request_id, "LLM_RESPONSE", "SUCCESS")
 
-    # Finalize Audit Log
-    latency = (datetime.utcnow() - start_time).total_seconds() * 1000
-    await finalize_audit_log(request_id, "PASSED", int(latency))
+        # Finalize Audit Log
+        latency = (datetime.utcnow() - start_time).total_seconds() * 1000
+        await finalize_audit_log(request_id, "PASSED", int(latency))
 
-    system_msg = {"user_email": current_user["email"], "role": "system", "content": final_response, "status": "PASSED", "timestamp": datetime.utcnow()}
-    await chat_db.insert_one(system_msg.copy())
-    
-    return {
-        "status": "PASSED", 
-        "original_message": message,
-        "response": final_response,
-        "is_safe_check": llm_output.is_safe
-    }
+        system_msg = {"user_email": current_user["email"], "role": "system", "content": final_response, "status": "PASSED", "timestamp": datetime.utcnow()}
+        await chat_db.insert_one(system_msg.copy())
+        
+        return {
+            "status": "PASSED", 
+            "original_message": message,
+            "response": final_response,
+            "is_safe_check": llm_output.is_safe
+        }
+    except Exception as e:
+        print(f"LLM GENERATION ERROR: {str(e)}")
+        return await block_and_return(f"LLM failed to generate response: {str(e)}", "LLM_ENGINE")
 
 # 5. Telemetry Endpoints (Admin RBAC)
 def mask_text(text: str) -> str:

@@ -6,7 +6,7 @@ from app.services.logger import client, settings
 db = client["SSA_Security"]
 users_collection = db["users"]
 
-SECRET_KEY = "super_secret_jwt_key_for_secureshield" # Should be in .env realistically
+SECRET_KEY = settings.JWT_SECRET
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7

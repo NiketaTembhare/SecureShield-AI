@@ -25,7 +25,8 @@ class ToxicityEngine:
             cls._client = instructor.from_openai(
                 AsyncOpenAI(
                     base_url="https://openrouter.ai/api/v1",
-                    api_key=settings.OPENROUTER_API_KEY
+                    api_key=settings.OPENROUTER_API_KEY,
+                    timeout=30.0 # Guard timeout
                 ),
                 mode=instructor.Mode.JSON,
             )
@@ -41,7 +42,7 @@ async def check_toxicity(text: str) -> bool:
     try:
         # Use a fast, context-aware model for content filtering
         result = await client.chat.completions.create(
-            model="google/gemini-2.0-flash-001",
+            model=settings.GUARD_MODEL,
             response_model=ToxicityReport,
             messages=[
                 {

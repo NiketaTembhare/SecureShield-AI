@@ -37,7 +37,8 @@ export default function LogsPage() {
             layer: layer,
             status: status,
             risk: risk,
-            prompt: prompt
+            prompt: prompt,
+            user: log.user_context // Keep user info for UI
           };
         });
         setLogs(formattedLogs);
@@ -48,7 +49,9 @@ export default function LogsPage() {
 
   const filteredLogs = logs.filter(log => 
     log.prompt.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    log.layer.toLowerCase().includes(searchTerm.toLowerCase())
+    log.layer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.user?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.user?.department.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -89,6 +92,7 @@ export default function LogsPage() {
               <tr className="bg-white/50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800">
                 <th className="p-4 font-semibold text-slate-600 dark:text-slate-400 text-sm">Timestamp</th>
                 <th className="p-4 font-semibold text-slate-600 dark:text-slate-400 text-sm">Status</th>
+                <th className="p-4 font-semibold text-slate-600 dark:text-slate-400 text-sm">User Context</th>
                 <th className="p-4 font-semibold text-slate-600 dark:text-slate-400 text-sm">Responsible Layer</th>
                 <th className="p-4 font-semibold text-slate-600 dark:text-slate-400 text-sm">Risk Score</th>
                 <th className="p-4 font-semibold text-slate-600 dark:text-slate-400 text-sm w-1/3">Payload Snapshot</th>
@@ -104,6 +108,12 @@ export default function LogsPage() {
                     }`}>
                       {log.status === 'PASSED' ? <ShieldCheck size={14}/> : <AlertTriangle size={14}/>} {log.status}
                     </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-xs font-medium text-slate-800 dark:text-slate-200">{log.user?.email}</div>
+                    <div className="text-[10px] text-slate-500 uppercase tracking-tight font-semibold">
+                      {log.user?.role} • {log.user?.department}
+                    </div>
                   </td>
                   <td className="p-4 text-sm text-cyan-400 font-medium">{log.layer}</td>
                   <td className="p-4">
