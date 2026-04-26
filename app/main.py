@@ -19,6 +19,37 @@ from app.services.logger import init_audit_log, log_pipeline_event, finalize_aud
 from app.services.user_service import register_user_db, authenticate_user_db, get_current_user, require_super_admin, require_any_admin
 from app.layers.semantic_guard import check_semantic_intent
 
+# --- NEW: GUARDRAILS & LOGGING ---
+import json
+import os
+
+def simple_langsmith_logger(user_input, risk_score, decision, final_response):
+    """Basic local logging system (LangSmith-style)"""
+    try:
+        log_entry = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "user_input": user_input,
+            "risk_score": risk_score,
+            "decision": decision,
+            "final_response": final_response
+        }
+        with open("simple_audit.log", "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception as e:
+        print(f"Logging error: {e}")
+
+async def apply_guardrails(response_text: str) -> str:
+    """Apply Guardrails after LLM response. Fail-safe."""
+    try:
+        # Placeholder for actual guardrails logic
+        # e.g., guard = Guard.from_string(...)
+        # return guard.parse(response_text)
+        return response_text
+    except Exception as e:
+        print(f"Guardrails error: {e}")
+        return response_text # Fail-safe
+# ---------------------------------
+
 # 1. Initialize App
 app = FastAPI(title=settings.app_name)
 
@@ -136,6 +167,11 @@ async def chat_endpoint(data: ChatMessageModel, current_user: dict = Depends(get
         
         system_msg = {"user_email": current_user["email"], "role": "system", "content": "Payload intercepted and destroyed.", "status": "BLOCKED", "reason": reason, "timestamp": datetime.utcnow()}
         await chat_db.insert_one(system_msg.copy())
+        
+        # --- NEW: SIMPLE LOGGING ---
+        simple_langsmith_logger(message, 1.0, "BLOCK", f"Blocked by {layer}: {reason}")
+        # ---------------------------
+        
         return {"status": "BLOCKED", "reason": reason}
 
     # Pipeline Checks
@@ -180,6 +216,10 @@ async def chat_endpoint(data: ChatMessageModel, current_user: dict = Depends(get
         llm_output = await generate_response(safe_message)
         final_response = scrub_pii(llm_output.answer) 
         
+        # --- NEW: GUARDRAILS INTEGRATION ---
+        final_response = await apply_guardrails(final_response)
+        # -----------------------------------
+        
         await log_pipeline_event(request_id, "LLM_RESPONSE", "SUCCESS")
 
         # Finalize Audit Log
@@ -188,6 +228,11 @@ async def chat_endpoint(data: ChatMessageModel, current_user: dict = Depends(get
 
         system_msg = {"user_email": current_user["email"], "role": "system", "content": final_response, "status": "PASSED", "timestamp": datetime.utcnow()}
         await chat_db.insert_one(system_msg.copy())
+        
+        # --- NEW: SIMPLE LOGGING ---
+        risk_score = 0.0 if getattr(llm_output, 'is_safe', True) else 1.0 
+        simple_langsmith_logger(message, risk_score, "ALLOW", final_response)
+        # ---------------------------
         
         return {
             "status": "PASSED", 
