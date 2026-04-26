@@ -16,7 +16,7 @@ export default function LogsPage() {
           let status = 'PASSED';
           let risk = 'Low';
           let prompt = JSON.stringify(log.details);
-          
+
           if (log.event.startsWith('BLOCKED_')) {
             status = 'BLOCKED';
             risk = 'High';
@@ -26,9 +26,9 @@ export default function LogsPage() {
             layer = 'LLM Engine';
             prompt = log.details.response || prompt;
           } else if (log.event === 'PII_REDACTED') {
-             layer = 'PII Guard';
-             risk = 'Medium';
-             prompt = log.details.original;
+            layer = 'PII Guard';
+            risk = 'Medium';
+            prompt = log.details.original;
           }
 
           return {
@@ -47,15 +47,15 @@ export default function LogsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filteredLogs = logs.filter(log => 
-    log.prompt.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredLogs = logs.filter(log =>
+    log.prompt.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.layer.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.user?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.user?.department.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
-     return <div className="h-full flex items-center justify-center bg-white dark:bg-slate-950"><Loader2 className="animate-spin text-cyan-500" size={32} /></div>;
+    return <div className="h-full flex items-center justify-center bg-white dark:bg-slate-950"><Loader2 className="animate-spin text-cyan-500" size={32} /></div>;
   }
 
   return (
@@ -71,8 +71,8 @@ export default function LogsPage() {
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="Search prompt contents or layer names..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -103,10 +103,9 @@ export default function LogsPage() {
                 <tr key={log.id} className="hover:bg-slate-100/30 dark:bg-slate-800/30 transition-colors cursor-pointer">
                   <td className="p-4 text-sm font-mono text-slate-500">{log.timestamp}</td>
                   <td className="p-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold uppercase border ${
-                      log.status === 'PASSED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                    }`}>
-                      {log.status === 'PASSED' ? <ShieldCheck size={14}/> : <AlertTriangle size={14}/>} {log.status}
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold uppercase border ${log.status === 'PASSED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                      }`}>
+                      {log.status === 'PASSED' ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />} {log.status}
                     </span>
                   </td>
                   <td className="p-4">
@@ -117,11 +116,10 @@ export default function LogsPage() {
                   </td>
                   <td className="p-4 text-sm text-cyan-400 font-medium">{log.layer}</td>
                   <td className="p-4">
-                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
-                       log.risk === 'High' ? 'text-rose-400 bg-rose-500/10' : log.risk === 'Medium' ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10'
-                     }`}>
-                       {log.risk}
-                     </span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${log.risk === 'High' ? 'text-rose-400 bg-rose-500/10' : log.risk === 'Medium' ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10'
+                      }`}>
+                      {log.risk}
+                    </span>
                   </td>
                   <td className="p-4 text-sm text-slate-700 dark:text-slate-300 truncate max-w-[200px]">{log.prompt}</td>
                 </tr>

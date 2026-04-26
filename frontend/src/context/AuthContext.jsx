@@ -30,15 +30,15 @@ export function AuthProvider({ children }) {
             try {
               const res = await axios.post("http://127.0.0.1:8000/auth/refresh", { refresh_token });
               const { access_token, refresh_token: new_refresh, user: new_user } = res.data;
-              
+
               localStorage.setItem('ssa_user', JSON.stringify(new_user));
               localStorage.setItem('ssa_access_token', access_token);
               localStorage.setItem('ssa_refresh_token', new_refresh);
-              
+
               axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
               originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
               setUser(new_user);
-              
+
               return axios(originalRequest);
             } catch (err) {
               // Refresh token died or tampered, destroy session
@@ -49,12 +49,12 @@ export function AuthProvider({ children }) {
               delete axios.defaults.headers.common['Authorization'];
             }
           } else {
-             // No refresh token available, destroy session
-             setUser(null);
-             localStorage.removeItem('ssa_user');
-             localStorage.removeItem('ssa_access_token');
-             localStorage.removeItem('ssa_refresh_token');
-             delete axios.defaults.headers.common['Authorization'];
+            // No refresh token available, destroy session
+            setUser(null);
+            localStorage.removeItem('ssa_user');
+            localStorage.removeItem('ssa_access_token');
+            localStorage.removeItem('ssa_refresh_token');
+            delete axios.defaults.headers.common['Authorization'];
           }
         }
         return Promise.reject(error);
@@ -68,13 +68,13 @@ export function AuthProvider({ children }) {
     try {
       setError(null);
       const res = await axios.post("http://127.0.0.1:8000/auth/login", { email, password });
-      
+
       const { user: userData, access_token, refresh_token } = res.data;
-      
+
       localStorage.setItem('ssa_user', JSON.stringify(userData));
       localStorage.setItem('ssa_access_token', access_token);
       localStorage.setItem('ssa_refresh_token', refresh_token);
-      
+
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       setUser(userData);
     } catch (err) {
@@ -87,13 +87,13 @@ export function AuthProvider({ children }) {
     try {
       setError(null);
       const res = await axios.post("http://127.0.0.1:8000/auth/register", { email, password, name, role, department });
-      
+
       const { user: userData, access_token, refresh_token } = res.data;
-      
+
       localStorage.setItem('ssa_user', JSON.stringify(userData));
       localStorage.setItem('ssa_access_token', access_token);
       localStorage.setItem('ssa_refresh_token', refresh_token);
-      
+
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       setUser(userData);
     } catch (err) {

@@ -24,17 +24,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     axios.get('http://127.0.0.1:8000/metrics')
-         .then(res => {
-           const formattedChartData = res.data.chartData?.map(item => ({
-             ...item,
-             time: new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-           }));
-           setMetrics({ ...res.data, chartData: formattedChartData });
-         })
-         .catch(err => {
-           console.error("Failed to load metrics", err);
-           setError(err.response?.status === 403 ? "Access Denied: Admin privileges required." : "Failed to load dashboard metrics.");
-         });
+      .then(res => {
+        const formattedChartData = res.data.chartData?.map(item => ({
+          ...item,
+          time: new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }));
+        setMetrics({ ...res.data, chartData: formattedChartData });
+      })
+      .catch(err => {
+        console.error("Failed to load metrics", err);
+        setError(err.response?.status === 403 ? "Access Denied: Admin privileges required." : "Failed to load dashboard metrics.");
+      });
   }, []);
 
   if (error) {
@@ -52,7 +52,7 @@ export default function Dashboard() {
   }
   return (
     <div className="max-w-7xl mx-auto flex flex-col h-full gap-6">
-      
+
       {/* Header */}
       <div className="flex-none">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Systems Overview</h1>
@@ -61,10 +61,10 @@ export default function Dashboard() {
 
       {/* Top Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 flex-none">
-        <StatCard title="Total Traffic" value={metrics.total.toString()} subValue="Live" icon={<Activity size={24}/>} />
-        <StatCard title="Safe Requests" value={metrics.safe.toString()} subValue={`${((metrics.safe / (metrics.total || 1)) * 100).toFixed(1)}%`} icon={<ShieldCheck size={24}/>} />
-        <StatCard title="Threats Blocked" value={metrics.blocked.toString()} subValue="Intercepted" icon={<ShieldAlert size={24}/>} isAlert />
-        <StatCard title="Active Rules" value={metrics.activeRules?.toString() || "0"} icon={<AlertTriangle size={24}/>} />
+        <StatCard title="Total Traffic" value={metrics.total.toString()} subValue="Live" icon={<Activity size={24} />} />
+        <StatCard title="Safe Requests" value={metrics.safe.toString()} subValue={`${((metrics.safe / (metrics.total || 1)) * 100).toFixed(1)}%`} icon={<ShieldCheck size={24} />} />
+        <StatCard title="Threats Blocked" value={metrics.blocked.toString()} subValue="Intercepted" icon={<ShieldAlert size={24} />} isAlert />
+        <StatCard title="Active Rules" value={metrics.activeRules?.toString() || "0"} icon={<AlertTriangle size={24} />} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
@@ -76,18 +76,18 @@ export default function Dashboard() {
               <AreaChart data={metrics.chartData || []} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorSafe" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorBlocked" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                <XAxis dataKey="time" stroke="#64748b" tick={{fill: '#64748b', fontSize: 12}} tickLine={false} axisLine={false} />
-                <YAxis stroke="#64748b" tick={{fill: '#64748b', fontSize: 12}} tickLine={false} axisLine={false} />
-                <Tooltip 
+                <XAxis dataKey="time" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} tickLine={false} axisLine={false} />
+                <YAxis stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} tickLine={false} axisLine={false} />
+                <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px', color: '#f8fafc' }}
                   itemStyle={{ fontSize: '14px' }}
                 />
@@ -102,7 +102,7 @@ export default function Dashboard() {
         <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">Recent Activity</h2>
           <div className="flex-1 overflow-y-auto space-y-4">
-            
+
             {metrics.recentActivity && metrics.recentActivity.length > 0 ? metrics.recentActivity.map((activity) => (
               <div key={activity.id} className="flex items-start gap-4">
                 <div className={`w-2 h-2 rounded-full mt-2 ${activity.isAlert ? 'bg-rose-500' : 'bg-cyan-500'}`}></div>
@@ -112,7 +112,7 @@ export default function Dashboard() {
                 </div>
               </div>
             )) : (
-               <p className="text-sm text-slate-500 italic">No recent activity found in server logs.</p>
+              <p className="text-sm text-slate-500 italic">No recent activity found in server logs.</p>
             )}
 
           </div>
