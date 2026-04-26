@@ -7,6 +7,34 @@ from app.config import settings
 # Setup local logger for the layer
 logger = logging.getLogger("SecureShield.SemanticGuard")
 
+# --- NEW: LAKERA GUARD INTEGRATION ---
+async def check_lakera(text: str) -> bool:
+    """Optional Lakera Guard check for prompt injection."""
+    lakera_key = getattr(settings, "LAKERA_API_KEY", None)
+    if not lakera_key:
+        return True # Fallback to existing logic if no key
+        
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.lakera.ai/v1/prompt_injection",
+                json={"input": text},
+                headers={"Authorization": f"Bearer {lakera_key}"},
+                timeout=5.0
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("results", [{}])[0].get("flagged", False):
+                    logger.warning("BLOCKED_SEMANTIC: Lakera Guard detected prompt injection.")
+                    return False
+    except Exception as e:
+        logger.error(f"Lakera API Error: {str(e)}")
+        # Fail-safe: ignore Lakera error, let the fallback logic run
+    return True
+# --------------------------------------
+
+
 class IntentAnalysis(BaseModel):
     is_malicious: bool
     reason: str
@@ -35,6 +63,11 @@ async def check_semantic_intent(text: str) -> bool:
     Returns True if SAFE, False if BLOCKED.
     Now properly async for better performance.
     """
+    # --- NEW: LAKERA CHECK ---
+    if not await check_lakera(text):
+        return False
+    # -------------------------
+    
     client = CloudSemanticGuard.get_client()
     
     try:
